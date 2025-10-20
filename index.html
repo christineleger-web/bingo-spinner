@@ -1,6 +1,328 @@
-<!doctype html>
-<html><head><meta charset="utf-8"><title>Test</title></head>
-<body style="font:16px/1.4 system-ui;padding:2rem">
-  <h1>GitHub Pages is working ✅</h1>
-  <p>If you can see this, your Pages config is good.</p>
-</body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bingo Spinner (Text‑to‑Speech)</title>
+  <style>
+    :root{
+      --bg:#f8fafc;--card:#ffffff;--text:#0f172a;--muted:#64748b;--accent:#4f46e5;--accent-2:#059669;
+      --shadow:0 10px 25px rgba(2,6,23,.06),0 4px 8px rgba(2,6,23,.04);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1200px;margin:auto;padding:16px}
+    .grid{display:grid;gap:16px}
+    @media(min-width:1024px){.grid{grid-template-columns:1fr 1fr}}
+    .card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:16px}
+    h1{font-size:clamp(20px,2.5vw,28px);margin:0 0 8px}
+    h2{font-size:18px;margin:16px 0 8px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    button{appearance:none;border:0;border-radius:14px;background:#e2e8f0;color:#0f172a;padding:10px 14px;font-weight:700;cursor:pointer}
+    button.primary{background:var(--accent);color:white}
+    button.good{background:var(--accent-2);color:white}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    textarea{width:100%;height:220px;border:1px solid #e2e8f0;border-radius:12px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    select,input[type="range"],input[type="checkbox"]{accent-color:var(--accent)}
+    .hint{color:var(--muted);font-size:12px}
+    .badge{display:inline-block;padding:4px 8px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;margin:2px}
+    .wheel-wrap{position:relative;display:inline-block}
+    .pointer{position:absolute;left:50%;transform:translateX(-50%);top:-6px;z-index:2}
+    .triangle{width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:18px solid #f43f5e;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))}
+    .wheel{width:480px;height:480px;border-radius:999px;border:4px solid #fff;background:#e5e7eb;box-shadow:var(--shadow);transition:transform 4.5s cubic-bezier(0.12, 0.6, 0, 1)}
+    .panel{display:flex;justify-content:space-between;align-items:center}
+    .last{font-size:28px;font-weight:900;letter-spacing:.02em}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="grid">
+      <div class="card" id="left">
+        <div class="panel">
+          <h1>Bingo Spinner (TTS)</h1>
+          <div class="row">
+            <button id="btnFull">Fullscreen</button>
+            <button id="btnReset">Reset</button>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:center;margin:8px 0 18px">
+          <div class="wheel-wrap">
+            <div class="pointer"><div class="triangle"></div></div>
+            <div class="wheel" id="wheel">
+              <svg id="svg" viewBox="-230 -230 460 460" width="480" height="480" role="img" aria-label="Spinning wheel">
+                <!-- We rotate the slices by -90° so zero degrees is vertical/top. The outer div rotates for spins. -->
+                <g id="slices" transform="rotate(-90)"></g>
+                <text id="emptyText" x="0" y="0" text-anchor="middle" dominant-baseline="middle" font-size="20" font-weight="700">Add items to spin</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="justify-content:center;margin-bottom:8px">
+          <button class="primary" id="btnSpin">SPIN</button>
+          <button class="good" id="btnSpeak" disabled>Speak again</button>
+          <label class="row" style="font-size:14px"><input type="checkbox" id="chkRemove"/> Remove after spin</label>
+          <label class="row" style="font-size:14px"><input type="checkbox" id="chkAuto" checked/> Auto‑speak</label>
+        </div>
+
+        <div class="card" style="margin-top:8px">
+          <div class="panel">
+            <div>
+              <div class="hint">Last pick</div>
+              <div class="last" id="lastPick">—</div>
+            </div>
+            <div class="hint">Spins: <span id="spinCount">0</span></div>
+          </div>
+          <div id="history" class="hint" style="margin-top:8px"></div>
+        </div>
+      </div>
+
+      <div class="card" id="right">
+        <h2>Your List</h2>
+        <textarea id="txtList" placeholder="One item per line (e.g., B1, B2, … or words like: pomme, banane, cerise)"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="primary" id="btnApply">Apply list</button>
+          <button id="btnClassic">Classic 1–75 Bingo</button>
+        </div>
+
+        <h2 style="margin-top:16px">Voice Settings</h2>
+        <div class="grid" style="grid-template-columns:1fr 1fr">
+          <label style="font-size:14px">
+            <div style="margin-bottom:6px;font-weight:600">Voice</div>
+            <select id="selVoice" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:12px"></select>
+          </label>
+          <div class="row" style="align-items:end">
+            <button class="good" id="btnTest">Test voice</button>
+          </div>
+          <label style="font-size:14px">
+            <div class="panel"><span style="font-weight:600">Rate</span><span id="labRate">1.00</span></div>
+            <input id="rngRate" type="range" min="0.5" max="1.5" step="0.05" value="1"/>
+          </label>
+          <label style="font-size:14px">
+            <div class="panel"><span style="font-weight:600">Pitch</span><span id="labPitch">1.00</span></div>
+            <input id="rngPitch" type="range" min="0.5" max="2" step="0.05" value="1"/>
+          </label>
+          <label style="font-size:14px">
+            <div class="panel"><span style="font-weight:600">Volume</span><span id="labVol">1.00</span></div>
+            <input id="rngVol" type="range" min="0" max="1" step="0.05" value="1"/>
+          </label>
+        </div>
+
+        <h2 style="margin-top:16px">Tips</h2>
+        <ul class="hint" style="line-height:1.5">
+          <li>Paste French or English words — pick a French voice for best French.</li>
+          <li>Enable <b>Remove after spin</b> to avoid repeats. Use <b>Reset</b> to restore your list.</li>
+          <li>Use <b>Fullscreen</b> for the projector/board.</li>
+          <li>If no audio, click anywhere on the page to allow sound (browser policy).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    // ===== Data =====
+    const defaultWords = `B1\nB2\nB3\nB4\nB5\nI16\nI17\nI18\nI19\nI20\nN31\nN32\nN33\nN34\nN35\nG46\nG47\nG48\nG49\nG50\nO61\nO62\nO63\nO64\nO65`;
+
+    // ===== DOM =====
+    const txtList = document.getElementById('txtList');
+    const btnApply = document.getElementById('btnApply');
+    const btnClassic = document.getElementById('btnClassic');
+    const btnSpin = document.getElementById('btnSpin');
+    const btnSpeak = document.getElementById('btnSpeak');
+    const btnReset = document.getElementById('btnReset');
+    const btnFull = document.getElementById('btnFull');
+
+    const chkRemove = document.getElementById('chkRemove');
+    const chkAuto = document.getElementById('chkAuto');
+
+    const svg = document.getElementById('svg');
+    const slicesG = document.getElementById('slices');
+    const emptyText = document.getElementById('emptyText');
+    const wheel = document.getElementById('wheel');
+
+    const lastPick = document.getElementById('lastPick');
+    const spinCountEl = document.getElementById('spinCount');
+    const historyEl = document.getElementById('history');
+
+    const selVoice = document.getElementById('selVoice');
+    const btnTest = document.getElementById('btnTest');
+    const rngRate = document.getElementById('rngRate');
+    const rngPitch = document.getElementById('rngPitch');
+    const rngVol = document.getElementById('rngVol');
+    const labRate = document.getElementById('labRate');
+    const labPitch = document.getElementById('labPitch');
+    const labVol = document.getElementById('labVol');
+
+    // ===== State =====
+    let items = [];
+    let history = [];
+    let rotation = 0; // cumulative degrees
+    let isSpinning = false;
+    let spinCount = 0;
+
+    // speech
+    let voices = [];
+    let voiceURI = '';
+    let rate = 1, pitch = 1, volume = 1;
+
+    // ===== Helpers =====
+    function parseList(text){
+      return text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    }
+
+    function buildClassic(){
+      const letters = ['B','I','N','G','O'];
+      const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
+      const out = [];
+      for(let i=0;i<5;i++){
+        for(let n=ranges[i][0]; n<=ranges[i][1]; n++) out.push(letters[i]+n);
+      }
+      return out.join('\n');
+    }
+
+    function pastel(i){
+      const base = ['#e5e7eb','#c7d2fe','#fde68a','#a7f3d0','#fecaca','#fbcfe8','#bfdbfe','#ddd6fe'];
+      return base[i % base.length];
+    }
+
+    function drawWheel(){
+      while(slicesG.firstChild) slicesG.removeChild(slicesG.firstChild);
+      const n = items.length;
+      emptyText.style.display = n ? 'none':'block';
+      if(!n) return;
+      const sliceAngle = 360 / n;
+      const radius = 200;
+      let start = 0;
+      for(let i=0;i<n;i++){
+        const end = start + sliceAngle;
+        const largeArc = sliceAngle > 180 ? 1 : 0;
+        const sx = radius * Math.cos(Math.PI/180 * start);
+        const sy = radius * Math.sin(Math.PI/180 * start);
+        const ex = radius * Math.cos(Math.PI/180 * end);
+        const ey = radius * Math.sin(Math.PI/180 * end);
+        const d = `M 0 0 L ${sx} ${sy} A ${radius} ${radius} 0 ${largeArc} 1 ${ex} ${ey} Z`;
+        const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+        path.setAttribute('d', d);
+        path.setAttribute('fill', pastel(i));
+        path.setAttribute('stroke', '#ffffff');
+        path.setAttribute('stroke-width', '2');
+        slicesG.appendChild(path);
+
+        const mid = (start + end) / 2;
+        const lx = radius * 0.65 * Math.cos(Math.PI/180 * mid);
+        const ly = radius * 0.65 * Math.sin(Math.PI/180 * mid);
+        const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+        label.setAttribute('x', lx);
+        label.setAttribute('y', ly);
+        label.setAttribute('text-anchor','middle');
+        label.setAttribute('dominant-baseline','middle');
+        label.setAttribute('font-weight','700');
+        label.style.userSelect = 'none';
+        label.style.fontSize = n>24 ? '10px' : n>16 ? '12px' : '14px';
+        label.setAttribute('transform', `rotate(${mid}, ${lx}, ${ly})`);
+        label.textContent = items[i];
+        slicesG.appendChild(label);
+        start = end;
+      }
+    }
+
+    function normalize360(x){
+      return ((x % 360) + 360) % 360;
+    }
+
+    function speak(text){
+      try{
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        const v = voices.find(v=>v.voiceURI===voiceURI);
+        if(v) u.voice = v;
+        u.rate = rate; u.pitch = pitch; u.volume = volume;
+        window.speechSynthesis.speak(u);
+      }catch(e){console.error(e)}
+    }
+
+    function spin(){
+      if(!items.length || isSpinning) return;
+      const idx = Math.floor(Math.random()*items.length);
+      const sliceAngle = 360 / items.length;
+      const centerAngle = idx*sliceAngle + sliceAngle/2; // relative to +X axis
+      const current = normalize360(rotation);
+      // We rotated slices by -90°, so aligning chosen center to 0° (top) is still correct here.
+      const deltaToZero = normalize360(360 - ((centerAngle + current) % 360));
+      const extraSpins = 6 + Math.floor(Math.random()*4); // 6-9
+      const target = rotation + extraSpins*360 + deltaToZero;
+
+      isSpinning = true;
+      rotation = target;
+      wheel.style.transform = `rotate(${rotation}deg)`;
+
+      setTimeout(()=>{
+        isSpinning = false;
+        const picked = items[idx];
+        history.unshift(picked);
+        lastPick.textContent = picked || '—';
+        spinCount += 1; spinCountEl.textContent = String(spinCount);
+        btnSpeak.disabled = !picked;
+        renderHistory();
+        if(chkAuto.checked && picked) speak(picked);
+        if(chkRemove.checked){
+          items.splice(idx,1);
+          drawWheel();
+        }
+      }, 4500);
+    }
+
+    function renderHistory(){
+      historyEl.innerHTML = history.slice(1,20).map(h=>`<span class="badge">${h}</span>`).join('');
+    }
+
+    function resetList(){
+      items = parseList(txtList.value);
+      history = [];
+      rotation = 0; isSpinning = false; spinCount = 0;
+      wheel.style.transition = 'none'; wheel.style.transform = 'rotate(0deg)';
+      // force reflow then re-enable transition
+      void wheel.offsetHeight; wheel.style.transition = 'transform 4.5s cubic-bezier(0.12, 0.6, 0, 1)';
+      lastPick.textContent = '—'; btnSpeak.disabled = true; spinCountEl.textContent = '0';
+      renderHistory(); drawWheel();
+    }
+
+    // ===== Events =====
+    btnApply.addEventListener('click', ()=>{ items = parseList(txtList.value); resetList(); });
+    btnClassic.addEventListener('click', ()=>{ txtList.value = buildClassic(); items = parseList(txtList.value); resetList(); });
+    btnReset.addEventListener('click', resetList);
+    btnSpin.addEventListener('click', spin);
+    btnSpeak.addEventListener('click', ()=>{ if(history[0]) speak(history[0]); });
+    btnFull.addEventListener('click', ()=>{
+      if(document.fullscreenElement){ document.exitFullscreen(); }
+      else{ document.documentElement.requestFullscreen?.(); }
+    });
+
+    // Voice
+    function loadVoices(){
+      voices = window.speechSynthesis.getVoices();
+      selVoice.innerHTML = voices.map(v=>`<option value="${v.voiceURI}">${v.name} (${v.lang})</option>`).join('');
+      if(!voiceURI && voices.length){
+        const en = voices.find(v=>String(v.lang||'').toLowerCase().startsWith('fr')) || voices.find(v=>String(v.lang||'').toLowerCase().startsWith('en')) || voices[0];
+        voiceURI = en.voiceURI; selVoice.value = voiceURI;
+      } else if(voiceURI){ selVoice.value = voiceURI; }
+    }
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices();
+
+    selVoice.addEventListener('change', e=>{ voiceURI = e.target.value; });
+    rngRate.addEventListener('input', e=>{ rate = parseFloat(e.target.value); labRate.textContent = rate.toFixed(2); });
+    rngPitch.addEventListener('input', e=>{ pitch = parseFloat(e.target.value); labPitch.textContent = pitch.toFixed(2); });
+    rngVol.addEventListener('input', e=>{ volume = parseFloat(e.target.value); labVol.textContent = volume.toFixed(2); });
+    btnTest.addEventListener('click', ()=> speak('Test de la voix. Voice test. Bonjour ! Hello!'));
+
+    // Init
+    txtList.value = defaultWords;
+    items = parseList(txtList.value);
+    drawWheel();
+  })();
+  </script>
+</body>
+</html>
